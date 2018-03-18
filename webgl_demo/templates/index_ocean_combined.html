@@ -1,0 +1,607 @@
+<!DOCTYPE html>
+<!--[if gt IE 8]><!--> <html class="no-js"> <!--<![endif]-->
+		<head>
+				<meta charset="utf-8">
+				<meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
+				<title>SLOMicrotransat Sensor Data</title>
+				<meta name="description" content="">
+				<meta name="viewport" content="width=device-width, initial-scale=1">
+				<link rel="icon" href="{{ url_for('static', filename='favicon.ico') }}">
+
+				<link href="{{ url_for('static', filename='css/bootstrap.min.css') }}" rel="stylesheet">
+				<style>
+						body {
+							padding-top: 10px;
+							padding-bottom: 20px;
+							font-family: Corbel, sans-serif;
+						}
+						.container {
+							margin:0;
+							width: 100%;
+						}
+						#renderer {
+							/*border: 1px solid red;*/
+						}
+						#renderer canvas {
+							/*background-image: url(../static/ocean.jpg);*/
+							background-repeat: no-repeat;
+							background-size: cover;
+						}
+						#map_wrapper {
+							/*border: 1px solid green;*/
+						}
+						#wind_display {
+							/*border: 1px solid blue;*/
+							padding: 0;
+							margin:0;
+							position: relative;
+						    left: 0px;  /* stick it wherever it was positioned by default */
+						    top: 0px;
+							/*width:100%;*/
+						}
+						#wind_display img{
+							width: 100%;
+						}
+						#arrow {
+							position: absolute;
+							top:0;
+							left:0;
+						}
+						.col-sm-3  {
+							/*border: 1px solid black;*/
+						}
+
+
+					
+				</style>
+		</head>
+
+		<body>
+			<div class="container">
+				<div class="row">
+					<div>
+						<h1 class="text-center"><img src="{{ url_for('static', filename='favicon.ico') }}"> IRIS-SLOMICROTRANSAT</h1>
+						<h3 id="connecting">Connecting...</h3>
+						<div style="width:35%;display: inline-block;padding-left: 15px;" id="renderer"></div>
+						
+						<div style="width:35%;display: inline-block; padding-left: 15px;">
+							<div id="map_wrapper" style="height:300px;width:100%;">
+								<div id="map_canvas" style="height:100%;width:100%;" class="mapping"></div>
+							</div>
+						</div>
+						<div style="width:24%;display: inline-block;vertical-align:top; padding-left: 15px;padding-right: 15px;" id="wind_display">
+							<img src ="{{ url_for('static', filename='compass.png') }}">
+							<img src ="{{ url_for('static', filename='arrow.png') }}" id="arrow">
+						</div>
+					</div>
+					
+				</div>
+				<div class="row" id="controls">
+					<div class="col-sm-3">
+						<h3>Orientation (degrees):</h3>
+						<h4>Heading = <span id="heading">0</span></h4>
+						<h4>Roll = <span id="roll">0</span></h4>
+						<h4>Pitch = <span id="pitch">0</span></h4>
+						<h3>Calibration:</h3>
+						<h4>System = <span id="calSys">0</span></h4>
+						<h4>Gyro = <span id="calGyro">0</span></h4>
+						<h4>Accelerometer = <span id="calAccel">0</span></h4>
+						<h4>Magnetometer = <span id="calMag">0</span></h4>
+					</div>
+					<div class="col-sm-3">
+						<h3>Actions:</h3>
+						<form>
+							<div class="form-group">
+								<label for="model">Model:
+								<select class="form-control" id="model">
+								</select>
+							</div>
+							<div class="form-group">
+								<button type="button" class="btn btn-primary" id="straighten">Straighten</button>
+							</div>
+							<div class="form-group">
+								<button type="button" class="btn btn-primary" id="saveCalibration">Save Calibration</button>
+							</div>
+							<div class="form-group">
+								<button type="button" class="btn btn-primary" id="loadCalibration">Load Calibration</button>
+							</div>
+						</form>
+					</div>
+					<div class="col-sm-3">
+						<h3>Position</h3>
+						<h4>Lat = <span id="lat">0</span></h4>
+						<h4>Long = <span id="long">0</span></h4>
+					</div>
+					<div class="col-sm-3">
+						<h3>Wind</h3>
+						<h4>Speed= <span id="wind_speed">0</span></h4>
+						<h4>Direction = <span id="wind_direction">0</span></h4>
+					</div>
+					
+					
+				</div>
+			</div>
+			
+			<script src="{{ url_for('static', filename='js/jquery-2.1.4.min.js') }}"></script>
+			<script src="{{ url_for('static', filename='js/three.min.js') }}"></script>
+			<script src="{{ url_for('static', filename='js/DDSLoader.js') }}"></script>
+			<script src="{{ url_for('static', filename='js/MTLLoader.js') }}"></script>
+			<script src="{{ url_for('static', filename='js/OBJMTLLoader.js') }}"></script>
+			<script src="{{ url_for('static', filename='js/OBJLoader.js') }}"></script>
+			<script src="{{ url_for('static', filename='js/STLLoader.js') }}"></script>
+			<script src="{{ url_for('static', filename='js/bootstrap.min.js') }}"></script>
+			<script src="{{ url_for('static', filename='map.js') }}"></script>
+
+			<script src="{{ url_for('static', filename='assets_ocean/libs/RequestAnimationFrame.js') }}"></script>
+			<script src="{{ url_for('static', filename='assets_ocean/libs/jquery.min.js') }}"></script>
+			<script src="{{ url_for('static', filename='assets_ocean/libs/three/OrbitControls.js') }}"></script>
+			<script src="{{ url_for('static', filename='assets_ocean/libs/FastBlur.js') }}"></script>
+			<script src="{{ url_for('static', filename='assets_ocean/libs/konami.js') }}"></script>
+			
+			<!-- Terrain generator -->
+			<script src="{{ url_for('static', filename='assets_ocean/libs/terrain-generator/mersenne-twister.js') }}"></script>
+			<script src="{{ url_for('static', filename='assets_ocean/libs/terrain-generator/blur.js') }}"></script>
+			<script src="{{ url_for('static', filename='assets_ocean/libs/terrain-generator/destructure.js') }}"></script>
+			<script src="{{ url_for('static', filename='assets_ocean/libs/terrain-generator/mountains.js') }}"></script>
+			<script src="{{ url_for('static', filename='assets_ocean/libs/terrain-generator/perlinnoise.js') }}"></script>
+			<script src="{{ url_for('static', filename='assets_ocean/libs/terrain-generator/terraingen.js') }}"></script>
+			<script src="{{ url_for('static', filename='assets_ocean/libs/terrain-generator/circle.js') }}"></script>
+			
+			<!-- Water shader -->
+			<script src="{{ url_for('static', filename='assets_ocean/water-material.js') }}"></script>
+			
+			<!-- Demo files -->
+			<!-- <script src="{{ url_for('static', filename='assets_ocean/js/window.js') }}"></script>
+			<script src="{{ url_for('static', filename='assets_ocean/js/demo.js') }}"></script>
+			<script src="{{ url_for('static', filename='assets_ocean/js/main.js') }}"></script> -->
+		
+			<script>
+
+			$(document).ready(function() {
+				// Configuration
+				// Set size of the WebGL renderer scene.
+				var sirina = document.getElementById("renderer").offsetWidth;
+				var sceneWidth = sirina;
+				var sceneHeight = sirina*0.75-15;
+				document.getElementById("map_wrapper").style.height = '"'+sceneHeight+'px"';
+				var podatki
+				// Define list of 3D models.  Each item should have a name property that
+				// will be rendered in the drop down, and a load function that is called
+				// with the model instance and should add a model property with a Three.js
+				// scene graph object that will be rendered.
+				var models = [
+					// {
+					// 	name: 'Jadrnica4',
+					// 	load: function(model) {
+					// 		stlLoader.load(
+					// 			'{{ url_for('static', filename='jadrnica_stl4.stl') }}',
+					// 			function(geometry) {
+					// 				// Regenerate normals because they aren't loaded properly.
+					// 				geometry.computeFaceNormals();
+					// 				geometry.computeVertexNormals();
+					// 				// Load the model and build mesh.
+					// 				model.model = new THREE.Mesh(geometry, material);
+					// 				// Rotate, scale, and move so the cat is facing out the screen.
+					// 				model.model.rotation.x = -90 * (Math.PI / 180.0);
+					// 				model.model.rotation.z = -90 * (Math.PI / 180.0);
+					// 				model.model.scale.set(0.15, 0.15, 0.15);
+					// 				model.model.position.z = -2;
+									
+									
+					// 			}
+					// 		);
+					// 	}
+					// },
+					{
+						name: 'Jadrnica5',
+						load: function(model) {
+							stlLoader.load(
+								'{{ url_for('static', filename='jadrnica_stl5_1.stl') }}',
+								function(geometry) {
+									// Regenerate normals because they aren't loaded properly.
+									geometry.computeFaceNormals();
+									geometry.computeVertexNormals();
+									// Load the model and build mesh.
+									model.model = new THREE.Mesh(geometry, material);
+									// Rotate, scale, and move so the cat is facing out the screen.
+									// model.model.rotation.x = -90 * (Math.PI / 180.0);
+									// model.model.rotation.z = -90 * (Math.PI / 180.0);
+									model.model.scale.set(0.15, 0.15, 0.15);
+									model.model.position.z = -2;
+									
+									
+								}
+							);
+						}
+					},
+					// {
+					// 	name: 'Jadrnica6',
+					// 	load: function(model) {
+					// 		stlLoader.load(
+					// 			'{{ url_for('static', filename='jadrnica_stl6.stl') }}',
+					// 			function(geometry) {
+					// 				// Regenerate normals because they aren't loaded properly.
+					// 				geometry.computeFaceNormals();
+					// 				geometry.computeVertexNormals();
+					// 				// Load the model and build mesh.
+					// 				model.model = new THREE.Mesh(geometry, material);
+					// 				// Rotate, scale, and move so the cat is facing out the screen.
+					// 				model.model.rotation.x = -90 * (Math.PI / 180.0);
+					// 				model.model.rotation.z = -90 * (Math.PI / 180.0);
+					// 				model.model.scale.set(0.15, 0.15, 0.15);
+					// 				model.model.position.z = -2;
+									
+									
+					// 			}
+					// 		);
+					// 	}
+					// },
+					// {
+					// 	name: 'Jadrnica7',
+					// 	load: function(model) {
+					// 		stlLoader.load(
+					// 			'{{ url_for('static', filename='jadrnica_stl7.stl') }}',
+					// 			function(geometry) {
+					// 				// Regenerate normals because they aren't loaded properly.
+					// 				geometry.computeFaceNormals();
+					// 				geometry.computeVertexNormals();
+					// 				// Load the model and build mesh.
+					// 				model.model = new THREE.Mesh(geometry, material);
+					// 				// Rotate, scale, and move so the cat is facing out the screen.
+					// 				model.model.rotation.x = -90 * (Math.PI / 180.0);
+					// 				model.model.rotation.z = -90 * (Math.PI / 180.0);
+					// 				model.model.scale.set(0.15, 0.15, 0.15);
+					// 				model.model.position.z = -2;
+									
+									
+					// 			}
+					// 		);
+					// 	}
+					// },
+					{
+						name: 'XYZ Axes',
+						load: function(model) {
+							// Build some cylinders and rotate them to form a cross of the XYZ axes.
+							model.model = new THREE.Group();
+							var xAxis = new THREE.Mesh(new THREE.CylinderGeometry(0.25, 0.25, 7, 32, 32),
+																						 material);
+							xAxis.rotation.z = 90.0*(Math.PI/180.0);
+							model.model.add(xAxis);
+							var yAxis = new THREE.Mesh(new THREE.CylinderGeometry(0.25, 0.25, 7, 32, 32),
+																						 material);
+							model.model.add(yAxis);
+							var zAxis = new THREE.Mesh(new THREE.CylinderGeometry(0.25, 0.25, 7, 32, 32),
+																						 material);
+							zAxis.rotation.x = 90.0*(Math.PI/180.0);
+							model.model.add(zAxis);
+						}
+					}
+				];
+
+				// Global state.
+				var bnoData = null;
+				var offset = null;
+				var orientation = null;
+				var objMTLLoader = new THREE.OBJMTLLoader();
+				var stlLoader = new THREE.STLLoader();
+				var currentModel = null;
+
+				// Start with main controls hidden until connected.
+				$('#controls').hide();
+
+				// Setup Three.js scene and camera.
+				var scene = new THREE.Scene();
+				var camera = new THREE.PerspectiveCamera(75, sceneWidth / sceneHeight, 0.1, 1000);
+				// Start with the camera moved back a bit to look directly at the origin.
+				camera.position.z = 0;
+				camera.position.x = 10;
+				camera.rotation.y = 90 * Math.PI / 180;
+				camera.rotation.x = 90 * Math.PI / 180;
+
+				// Setup Three.js WebGL renderer and add it to the page.
+				var renderer = new THREE.WebGLRenderer({alpha: true});
+				renderer.autoClear = false;
+				renderer.setSize(sceneWidth, sceneHeight);
+				renderer.setClearColor(0xffffff, 0);
+				scene.background = new THREE.Color( 0xffffff );
+				$('#renderer').append(renderer.domElement);
+
+				ms_Raycaster = new THREE.Raycaster();
+
+				ms_Controls = new THREE.OrbitControls(camera, renderer.domElement);
+				ms_Controls.userPan = false;
+				ms_Controls.userPanSpeed = 0.0;
+				ms_Controls.maxDistance = 5000.0;
+				ms_Controls.maxPolarAngle = Math.PI * 0.495;
+
+				var directionalLight = new THREE.DirectionalLight(0xffff55, 1);
+				directionalLight.position.set(-600, 300, 600);
+				scene.add(directionalLight);
+				
+				var waterNormals = new THREE.ImageUtils.loadTexture('../static/assets_ocean/img/waternormals.jpg');
+				waterNormals.wrapS = waterNormals.wrapT = THREE.RepeatWrapping; 
+
+				
+				//KONAMI
+				// new Konami(function() {
+				// 	if(DEMO.ms_FilesDND == null)
+				// 	{
+				// 		var aTextureFDND = THREE.ImageUtils.loadTexture("assets/img/filesdnd_ad.png");
+				// 		aTextureFDND.minFilter = THREE.LinearFilter;
+				// 		DEMO.ms_FilesDND = new THREE.Mesh(new THREE.PlaneGeometry(1000, 1000), new THREE.MeshBasicMaterial({ map : aTextureFDND, transparent: true, side : THREE.DoubleSide }));
+
+				// 		// Mesh callback
+				// 		DEMO.ms_FilesDND.callback = function() { window.open("http://www.filesdnd.com"); }
+				// 		DEMO.ms_Clickable.push(DEMO.ms_FilesDND);
+						
+				// 		DEMO.ms_FilesDND.position.y = 1200;
+				// 		DEMO.ms_Scene.add(DEMO.ms_FilesDND);
+				// 	}
+				// });
+
+				ms_Water = new THREE.Water(renderer, camera, scene, {
+					textureWidth: 512, 
+					textureHeight: 512,
+					waterNormals: waterNormals,
+					alpha: 	1.0,
+					sunDirection: directionalLight.position.normalize(),
+					sunColor: 0xffffff,
+					waterColor: 0x001e0f,
+					distortionScale: 50.0
+				});
+
+
+				var aMeshMirror = new THREE.Mesh(
+					new THREE.PlaneBufferGeometry(2000 * 500, 2000 * 500, 10, 10), 
+					ms_Water.material
+				);
+				aMeshMirror.add(ms_Water);
+				aMeshMirror.rotation.x = - Math.PI * 0.5;
+				scene.add(aMeshMirror);
+				
+
+				// _________________________skybox
+				loadSkyBox();
+				// var aCubeMap = THREE.ImageUtils.loadTextureCube([
+				// 	  '../static/assets_ocean/img/px.jpg',
+				// 	  '../static/assets_ocean/img/nx.jpg',
+				// 	  '../static/assets_ocean/img/py.jpg',
+				// 	  '../static/assets_ocean/img/ny.jpg',
+				// 	  '../static/assets_ocean/img/pz.jpg',
+				// 	  '../static/assets_ocean/img/nz.jpg'
+				// 	]);
+				// 	aCubeMap.format = THREE.RGBFormat;
+
+				// 	var aShader = THREE.ShaderLib['cube'];
+				// 	aShader.uniforms['tCube'].value = aCubeMap;
+
+				// 	var aSkyBoxMaterial = new THREE.ShaderMaterial({
+				// 	  fragmentShader: aShader.fragmentShader,
+				// 	  vertexShader: aShader.vertexShader,
+				// 	  uniforms: aShader.uniforms,
+				// 	  depthWrite: false,
+				// 	  side: THREE.BackSide
+				// 	});
+
+				// 	var aSkybox = new THREE.Mesh(
+				// 	  new THREE.BoxGeometry(1000000, 1000000, 1000000),
+				// 	  aSkyBoxMaterial
+				// 	);
+					
+				// 	scene.add(aSkybox);
+				//______________________________
+
+				// Create white material for the models.
+				var material = new THREE.MeshPhongMaterial({ color: 0xffffff });
+
+				// Setup 3 point lighting with a red and blue point light in upper left
+				// and right corners, plus a bit of backlight from the rear forward.
+				var pointLight1 = new THREE.PointLight(0xffbbbb, 0.6);
+				pointLight1.position.set(40, 15, 40);
+				scene.add(pointLight1);
+				var pointLight2 = new THREE.PointLight(0xbbbbff, 0.6);
+				pointLight2.position.set(-40, 15, 40);
+				scene.add(pointLight2);
+				var backLight = new THREE.DirectionalLight(0xffff, 0.3);
+				backLight.position.set(0, -0.25, -1);
+				scene.add(backLight);
+
+				// Create a couple groups to apply rotations to the 3D model at different
+				// stages.  The outer group called offset is set to the reverse rotation
+				// of the current BNO orientation when the 'Straighten' button is clicked.
+				// This will force the model to center itself staring directly out of
+				// the screen.  The inner group called orientation will be rotated with
+				// the current BNO sensor orientation and cause the model to rotate.
+				offset = new THREE.Group();
+				orientation = new THREE.Group();
+				offset.add(orientation);
+				scene.add(offset);
+
+				// function loadSkyBox(){
+				// 	var textureCube = THREE.ImageUtils.loadTextureCube( ['../static/assets_ocean/img/px.jpg',
+				// 	  '../static/assets_ocean/img/nx.jpg',
+				// 	  '../static/assets_ocean/img/py.jpg',
+				// 	  '../static/assets_ocean/img/ny.jpg',
+				// 	  '../static/assets_ocean/img/pz.jpg',
+				// 	  '../static/assets_ocean/img/nz.jpg']);
+				// 	var shader = THREE.ShaderLib["cube"];
+				// 	var uniforms = THREE.UniformsUtils.clone( shader.uniforms );
+				// 	uniforms['tCube'].value= textureCube;   // textureCube has been init before
+				// 	var material = new THREE.ShaderMaterial({
+				// 	    fragmentShader    : shader.fragmentShader,
+				// 	    vertexShader  : shader.vertexShader,
+				// 	    uniforms  : uniforms,
+				// 	    depthWrite: false,
+				// 		side: THREE.DoubleSide
+				// 	});
+				// 	skyboxMesh    = new THREE.Mesh( new THREE.CubeGeometry( 100000, 100000, 100000, 1, 1, 1, null, true ), material );
+				// 	// add it to the scene
+				// 	scene.add( skyboxMesh );
+				// }
+				function loadSkyBox() {
+					console.log("loading skybox ________------------!!!!!!!!!")
+					var aCubeMap = THREE.ImageUtils.loadTextureCube([
+					  '../static/assets_ocean/img/px.jpg',
+					  '../static/assets_ocean/img/nx.jpg',
+					  '../static/assets_ocean/img/py.jpg',
+					  '../static/assets_ocean/img/ny.jpg',
+					  '../static/assets_ocean/img/pz.jpg',
+					  '../static/assets_ocean/img/nz.jpg'
+					]);
+					aCubeMap.format = THREE.RGBFormat;
+
+					var aShader = THREE.ShaderLib['cube'];
+					aShader.uniforms['tCube'].value = aCubeMap;
+
+					var aSkyBoxMaterial = new THREE.ShaderMaterial({
+					  fragmentShader: aShader.fragmentShader,
+					  vertexShader: aShader.vertexShader,
+					  uniforms: aShader.uniforms,
+					  depthWrite: false,
+					  side: THREE.BackSide
+					});
+
+					var aSkybox = new THREE.Mesh(
+					  new THREE.BoxGeometry(1000000, 1000000, 1000000),
+					  aSkyBoxMaterial
+					);
+					
+					scene.add(aSkybox);
+				}
+
+
+
+
+
+				// Main rendering function.
+				function render() {
+					requestAnimationFrame(render);
+					// Switch to the first model once it's loaded.
+					if (currentModel === null) {
+						if (models[0].hasOwnProperty('model')) {
+							currentModel = 0;
+							orientation.add(models[0].model);
+						}
+					}
+					// Update the orientation with the last BNO sensor reading quaternion.
+					if (bnoData !== null) {
+						// quatX = bnoData.quatX;
+						// quatY = bnoData.quatY;
+						// quatZ = bnoData.quatZ;
+						// quatW = bnoData.quatW;
+						heading1 = bnoData.heading;
+						roll1 = bnoData.roll;
+						pitch1 = bnoData.pitch;
+						roll_ = pitch1;
+						heading_ = roll1;
+						pitch_ = heading1;
+						t0 = Math.cos(heading_ * 0.5);
+				        t1 = Math.sin(heading_ * 0.5);
+				        t2 = Math.cos(roll_ * 0.5);
+				        t3 = Math.sin(roll_ * 0.5);
+				        t4 = Math.cos(pitch_ * 0.5);
+				        t5 = Math.sin(pitch_ * 0.5);
+				        quatW = t0 * t2 * t4 + t1 * t3 * t5;
+				        quatX = t0 * t3 * t4 - t1 * t2 * t5;
+				        quatY = t0 * t2 * t5 + t1 * t3 * t4;
+				        quatZ = t1 * t2 * t4 - t0 * t3 * t5;
+
+					 	orientation.quaternion.set(quatX, quatY, quatZ, quatW);
+					}
+					ms_Water.material.uniforms.time.value += 1.0 / 60.0;
+					ms_Controls.update();
+					ms_Water.render();
+					renderer.render(scene, camera);
+				}
+				render();
+
+				// Populate drop-down of 3D models and load all the models..
+				$.each(models, function(index, model) {
+					// Populate drop-down.
+					$('#model').append($("<option />").val(index).text(model.name));
+					// Kick off loading the model.
+					model.load(model);
+				});
+
+				// Model list changed event.
+				$('#model').change(function() {
+					// Remove the old model.
+					orientation.remove(models[currentModel].model);
+					// Update the current model and add it to the scene.
+					currentModel = $('#model')[0].selectedIndex;
+					orientation.add(models[currentModel].model);
+				});
+
+				// Straighten button click handler.
+				$('#straighten').click(function() {
+					// Get the current orientation of the BNO sensor and compute its
+					// conjugate or reverse rotation and apply it to the offset group.
+					// This will reset the 3D model so that it faces directly forward based
+					// on the current BNO sensor orientation.
+					var currentQuat = new THREE.Quaternion(bnoData.quatX, bnoData.quatY, bnoData.quatZ, bnoData.quatW);
+					offset.quaternion.copy(currentQuat.conjugate());
+				});
+
+				// Save calibration click handler calls the /save_calibration API.
+				$('#saveCalibration').click(function() {
+					$.post("{{ url_for('save_calibration') }}");
+				});
+
+				// Load calibration click handler calls the /load_calibration API.
+				$('#loadCalibration').click(function() {
+					$.post("{{ url_for('load_calibration') }}");
+				});
+
+				// Function called when a new sensor reading is received.
+				function updateSensorData(data) {
+					// Save the reading then update the UI.
+					bnoData = data;
+					$('#heading').text(data.heading);
+					$('#roll').text(data.roll);
+					$('#pitch').text(data.pitch);
+					$('#calSys').text(data.calSys);
+					$('#calGyro').text(data.calGyro);
+					$('#calAccel').text(data.calAccel);
+					$('#calMag').text(data.calMag);
+					$('#lat').text(data.lat);
+					$('#long').text(data.long);
+					$('#wind_direction').text(data.wind_dir);
+					$('#wind_speed').text(data.wind_spd);
+					
+					var compassDisc = document.getElementById("arrow");
+					compassDisc.style.webkitTransform = "rotate("+ data.wind_dir +"deg)";
+					compassDisc.style.MozTransform = "rotate("+ data.wind_dir +"deg)";
+					compassDisc.style.transform = "rotate("+ data.wind_dir +"deg)";
+
+				}
+
+				// Create server sent event connection to receive BNO sensor data.
+				var server = new EventSource('/sensors');
+				// Add server sent event handlers.
+				server.onmessage = function(e) {
+					// Update BNO sensor values.
+					podatki = JSON.parse(e.data)
+					updateSensorData(podatki);
+					
+				};
+				server.onopen = function(e) {
+					// Hide connecting status and show controls when connection is made.
+					$('#connecting').hide();
+					$('#controls').show();
+				};
+				server.onerror = function(e) {
+					// Hide controls and show connecting status if connection closes.
+					$('#controls').hide();
+					$('#connecting').show();
+				};
+				setInterval(function(){ 
+				    add_point(podatki);//data.lat,data.long);
+				}, 5000);
+							});
+			
+			</script>
+			<script> 
+				
+			</script>
+		</body>
+</html>

@@ -1,0 +1,53 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+	<head>
+		<meta charset="utf-8">
+		<title>Ocean - Jérémy BOUNY</title>
+		<link href="{{ url_for('static', filename='assets_ocean/css/style.css') }}" rel="stylesheet">
+		<meta name="apple-mobile-web-app-capable" content="yes" />
+		<meta name="mobile-web-app-capable" content="yes" />
+		<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+	</head>
+
+	<body>	
+		<div id="canvas-3d" class="viewer"></div>
+		
+		<!-- External libraries -->
+
+		<script src="{{ url_for('static', filename='js/jquery-2.1.4.min.js') }}"></script>
+		<script src="{{ url_for('static', filename='js/three.min.js') }}"></script>
+		<script src="{{ url_for('static', filename='js/DDSLoader.js') }}"></script>
+		<script src="{{ url_for('static', filename='js/MTLLoader.js') }}"></script>
+		<script src="{{ url_for('static', filename='js/OBJMTLLoader.js') }}"></script>
+		<script src="{{ url_for('static', filename='js/OBJLoader.js') }}"></script>
+		<script src="{{ url_for('static', filename='js/STLLoader.js') }}"></script>
+		<script src="{{ url_for('static', filename='js/bootstrap.min.js') }}"></script>
+
+		<script src="{{ url_for('static', filename='js/three.min.js') }}"></script>
+		
+		<script src="{{ url_for('static', filename='assets_ocean/libs/RequestAnimationFrame.js') }}"></script>
+		<script src="{{ url_for('static', filename='assets_ocean/libs/jquery.min.js') }}"></script>
+		<script src="{{ url_for('static', filename='assets_ocean/libs/three/OrbitControls.js') }}"></script>
+		<script src="{{ url_for('static', filename='assets_ocean/libs/FastBlur.js') }}"></script>
+		<script src="{{ url_for('static', filename='assets_ocean/libs/konami.js') }}"></script>
+		
+		<!-- Terrain generator -->
+		<script src="{{ url_for('static', filename='assets_ocean/libs/terrain-generator/mersenne-twister.js') }}"></script>
+		<script src="{{ url_for('static', filename='assets_ocean/libs/terrain-generator/blur.js') }}"></script>
+		<script src="{{ url_for('static', filename='assets_ocean/libs/terrain-generator/destructure.js') }}"></script>
+		<script src="{{ url_for('static', filename='assets_ocean/libs/terrain-generator/mountains.js') }}"></script>
+		<script src="{{ url_for('static', filename='assets_ocean/libs/terrain-generator/perlinnoise.js') }}"></script>
+		<script src="{{ url_for('static', filename='assets_ocean/libs/terrain-generator/terraingen.js') }}"></script>
+		<script src="{{ url_for('static', filename='assets_ocean/libs/terrain-generator/circle.js') }}"></script>
+		
+		<!-- Water shader -->
+		<script src="{{ url_for('static', filename='assets_ocean/water-material.js') }}"></script>
+		
+		<!-- Demo files -->
+		<script src="{{ url_for('static', filename='assets_ocean/js/window.js') }}"></script>
+		<script src="{{ url_for('static', filename='assets_ocean/js/demo.js') }}"></script>
+		<script src="{{ url_for('static', filename='assets_ocean/js/main.js') }}"></script>
+
+		<script src="{{ url_for('static', filename='js/STLLoader.js') }}"></script>
+	</body>
+</html>
